@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -16,6 +18,8 @@ type Point struct {
 	Y        int32
 	notEmpty bool
 }
+
+var score int
 
 // func button(title string, posX, posY int32) {
 // 	rl.DrawLine(posX-10, posY-10, posX+100, posY-10, rl.Blue)
@@ -114,6 +118,8 @@ func nextPoints(points [][]Point) [][]Point {
 		for j := 0; j < cols; j++ {
 			next[last][j].notEmpty = false
 		}
+		score += 10 //increase score
+		// fmt.Println("Score", score)
 	}
 
 	return next
@@ -139,7 +145,7 @@ func main() {
 	rl.InitWindow(800, 600, "Falling Sand")
 	defer rl.CloseWindow()
 
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(120)
 
 	var points [][]Point
 	points = initPoints()
@@ -151,12 +157,12 @@ func main() {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
-		rl.DrawRectangle(10, 10, ParticalWidth, ParticalHeight, rl.Yellow)
-
 		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
 			x := int32(mouseX / ParticalWidth)
 			y := int32(mouseY / ParticalHeight)
 			points[y][x].notEmpty = true
+			points[y][x+1].notEmpty = true
+			points[y][x+2].notEmpty = true
 		}
 
 		// rl.DrawCircle(mouseX, mouseY, ParticalRadius, rl.RayWhite)
@@ -164,13 +170,16 @@ func main() {
 		for _, row := range points {
 			for _, point := range row {
 				if point.notEmpty {
-					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.Yellow)
+					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.DarkPurple)
 				} else {
-					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.Blue)
+					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.Black)
 				}
 			}
 		}
 		// button("TESTING", 100, 120)
+		scoreText := fmt.Sprintf("Score %d", score)
+		rl.DrawText(scoreText, 10, 10, FontSize, rl.White) //create a text for score
+
 		rl.EndDrawing()
 
 		points = nextPoints(points)
