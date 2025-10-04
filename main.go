@@ -1,30 +1,123 @@
 package main
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 const FontSize = 18
 const Scale = 1
-const ParticalRadius = 2
+const ParticalRadius = 4
 const ParticalSpeed = 4
+const ParticalWidth = 10
+const ParticalHeight = 10
 
 type Point struct {
-	X int32
-	Y int32
+	X        int32
+	Y        int32
+	notEmpty bool
 }
 
-func isOccupied(points []Point, x, y int32, selfIndex int) bool {
-	for i, p := range points {
-		if i == selfIndex {
-			continue
+// func button(title string, posX, posY int32) {
+// 	rl.DrawLine(posX-10, posY-10, posX+100, posY-10, rl.Blue)
+// 	rl.DrawText(title, posX, posY, 16, rl.White)
+// 	// rl.DrawLineEx(rl.Vector2{10, 10}, rl.Vector2{10, 20}, 5, rl.Blue)
+// }
+
+func initPoints() [][]Point {
+	var points [][]Point
+	for i := 0; i < 60; i++ {
+		var row []Point
+		for j := 0; j < 80; j++ {
+			x := int32(i * ParticalWidth)
+			y := int32(j * ParticalHeight)
+			row = append(row, Point{X: x, Y: y})
 		}
-		dx := p.X - x
-		dy := p.Y - y
-		if dx*dx+dy*dy < (ParticalRadius*2)*(ParticalRadius*2) {
-			return true
+		points = append(points, row)
+	}
+	return points
+}
+
+// func checkNotEmpty(points [][]Point, i, j int, point Point) bool {
+// 	if j > 50 {
+// 		return point.notEmpty
+// 	}
+// 	if j < 10 {
+// 		return point.notEmpty
+// 	}
+
+// 	if points[i][j-1].notEmpty {
+// 		return true
+// 	}
+// 	return point.notEmpty
+// 	// i := point.X
+// 	// j := point.Y
+
+// 	// if j > 1 && j < 50 && points[i][j-1].notEmpty {
+// 	// 	notEmpty = true
+// 	// }
+// 	// if j > 1 && j < 50 && !points[i][j-1].notEmpty {
+// 	// 	notEmpty = false
+// 	// }
+// 	// return notEmpty
+// }
+
+func nextPoints(points [][]Point) [][]Point {
+	rows := len(points)
+	cols := len(points[0])
+
+	// Create a copy of the current grid
+	next := make([][]Point, rows)
+	for i := range next {
+		next[i] = make([]Point, cols)
+		for j := range next[i] {
+			next[i][j] = points[i][j]
 		}
 	}
-	return false
+
+	// Iterate from bottom to top (so falling cells don't overwrite others)
+	for i := rows - 2; i >= 0; i-- {
+		for j := 0; j < cols; j++ {
+			if points[i][j].notEmpty {
+				// Try to fall straight down
+				if !points[i+1][j].notEmpty {
+					next[i][j].notEmpty = false
+					next[i+1][j].notEmpty = true
+					continue
+				}
+
+				// Try to fall down-left
+				if j > 0 && !points[i+1][j-1].notEmpty {
+					next[i][j].notEmpty = false
+					next[i+1][j-1].notEmpty = true
+					continue
+				}
+
+				// Try to fall down-right
+				if j < cols-1 && !points[i+1][j+1].notEmpty {
+					next[i][j].notEmpty = false
+					next[i+1][j+1].notEmpty = true
+					continue
+				}
+			}
+		}
+	}
+
+	return next
 }
+
+// func nextPoints(points [][]Point) [][]Point {
+// 	var next [][]Point
+
+// 	for i, row := range points {
+// 		var nextRow []Point
+// 		for j, point := range row {
+// 			notEmpty := checkNotEmpty(points, i, j, point)
+// 			nextRow = append(nextRow, Point{X: point.X, Y: point.Y, notEmpty: notEmpty})
+// 		}
+// 		next = append(next, nextRow)
+// 	}
+// 	return next
+// }
 
 func main() {
 	// rl.SetConfigFlags(rl.FlagWindowHighdpi)
@@ -34,50 +127,38 @@ func main() {
 
 	rl.SetTargetFPS(60)
 
-	var points []Point
+	var points [][]Point
+	points = initPoints()
 
 	for !rl.WindowShouldClose() {
 		mouseX := int32(float32(rl.GetMouseX()) * Scale)
 		mouseY := int32(float32(rl.GetMouseY()) * Scale)
 
-		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
-			points = append(points, Point{mouseX, mouseY})
-		}
-
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 
-		rl.DrawCircle(mouseX, mouseY, ParticalRadius, rl.RayWhite)
+		rl.DrawRectangle(10, 10, ParticalWidth, ParticalHeight, rl.Yellow)
 
-		for i, point := range points {
-			rl.DrawCircle(point.X, point.Y, ParticalRadius, rl.Red)
+		if rl.IsMouseButtonDown(rl.MouseButtonLeft) {
+			x := int32(mouseX / ParticalWidth)
+			y := int32(mouseY / ParticalHeight)
+			points[y][x].notEmpty = true
+		}
 
-			// Платформа на Y=400, шарики не падають нижче
-			if point.Y < 400-ParticalRadius {
-				nextY := point.Y + ParticalSpeed
+		// rl.DrawCircle(mouseX, mouseY, ParticalRadius, rl.RayWhite)
 
-				// Якщо під шариком вільно — падаємо вниз
-				if !isOccupied(points, point.X, nextY, i) {
-					points[i].Y = nextY
-					continue
-				}
-
-				// Якщо вниз зайнято — пробуємо вниз-вліво
-				if !isOccupied(points, point.X-ParticalRadius*2, nextY, i) {
-					points[i].X -= ParticalRadius * 2
-					points[i].Y = nextY
-					continue
-				}
-
-				// Якщо вниз-вліво зайнято — пробуємо вниз-вправо
-				if !isOccupied(points, point.X+ParticalRadius*2, nextY, i) {
-					points[i].X += ParticalRadius * 2
-					points[i].Y = nextY
-					continue
+		for _, row := range points {
+			for _, point := range row {
+				if point.notEmpty {
+					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.Yellow)
+				} else {
+					rl.DrawRectangle(point.Y, point.X, ParticalWidth, ParticalHeight, rl.Blue)
 				}
 			}
 		}
-
+		// button("TESTING", 100, 120)
 		rl.EndDrawing()
+
+		points = nextPoints(points)
 	}
 }
