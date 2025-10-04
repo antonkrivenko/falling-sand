@@ -102,6 +102,20 @@ func nextPoints(points [][]Point) [][]Point {
 		}
 	}
 
+	last := rows - 1
+	isFull := true
+	for j := 0; j < cols; j++ {
+		if !points[last][j].notEmpty {
+			isFull = false
+		}
+	}
+
+	if isFull {
+		for j := 0; j < cols; j++ {
+			next[last][j].notEmpty = false
+		}
+	}
+
 	return next
 }
 
